@@ -1,6 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
-const babel = require("babel-core");
+var babel = require("@babel/core");
 const { safeSymlink } = require("../common/symlink");
 
 const [
@@ -33,12 +33,25 @@ function transformDir(dirRelativePath) {
         fileName.endsWith(".jsx"))
     ) {
       const transformed = babel.transformFileSync(srcFilePath, {
-        plugins: [
-          "transform-decorators-legacy",
-          "transform-es2015-modules-commonjs"
+        presets: [
+            [require("@babel/preset-env"), { "modules": false }],
+            require("@babel/preset-react"),
         ],
-        presets: ["env", "stage-2", "react"],
-        ignore: "node_modules"
+        plugins: [
+          // Stage 2
+          [require("@babel/plugin-proposal-decorators"), { "legacy": true }],
+          require("@babel/plugin-proposal-function-sent"),
+          require("@babel/plugin-proposal-export-namespace-from"),
+          require("@babel/plugin-proposal-numeric-separator"),
+          require("@babel/plugin-proposal-throw-expressions"),
+
+          // Stage 3
+          require("@babel/plugin-syntax-dynamic-import"),
+          require("@babel/plugin-syntax-import-meta"),
+          [require("@babel/plugin-proposal-class-properties"), { "loose": true }],
+          require("@babel/plugin-proposal-json-strings")
+        ],
+        ignore: ["node_modules"]
       });
       if (!transformed.code) {
         throw new Error(`Could not compile ${srcFilePath}.`);
