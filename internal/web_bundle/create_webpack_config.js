@@ -10,11 +10,13 @@ const [
   mode,
   optionalLibrary,
   splitChunksStr,
+  publicPathStr,
   webpackConfigPath
 ] = process.argv;
 
 const [libraryName, libraryTarget] = optionalLibrary.split("/");
 const splitChunks = splitChunksStr === "1";
+const publicPath = publicPathStr;
 
 const config = `
 const fs = require("fs");
@@ -50,16 +52,19 @@ module.exports = (
   const MiniCssExtractPlugin = require(path.resolve(\`\${loadersNpmPackagesDir}/node_modules/mini-css-extract-plugin\`));
   const OptimizeCSSAssetsPlugin = require(path.resolve(\`\${loadersNpmPackagesDir}/node_modules/optimize-css-assets-webpack-plugin\`));
   const UglifyJsPlugin = require(path.resolve(\`\${loadersNpmPackagesDir}/node_modules/uglifyjs-webpack-plugin\`));
+  const babelLoaderPlugin = require(path.resolve(\`\${loadersNpmPackagesDir}/node_modules/babel-loader\`));
 
   return {
-    entry: (sourceDir.startsWith("/") ? "" : "./") + path.join(
+    entry: ["@babel/polyfill",
+      (sourceDir.startsWith("/") ? "" : "./") + path.join(
       sourceDir,
       path.dirname("${libBuildfilePath}"),
       "${entry}",
-    ),
+    )],
     output: {
       filename: "${outputFileName}",
       path: path.resolve(outputBundleDir),
+      publicPath: "${publicPath}",
       ${
         optionalLibrary
           ? `library: "${libraryName}",
@@ -135,6 +140,36 @@ module.exports = (
                 "style-loader",
                 "css-loader"
               ]
+            },
+            {
+                test: /\.js$/,
+                //exclude: /node_modules/,
+                use: {
+                  loader: 'babel-loader',
+                  options: {
+                             presets: [
+                                  [require("@babel/preset-env"), { "modules": false }],
+                                  require("@babel/preset-react"),
+                              ],
+                              plugins: [
+                                // Stage 2
+                                //
+
+                                [require("@babel/plugin-proposal-decorators"), { "legacy": true }],
+                                require("@babel/plugin-proposal-function-sent"),
+                                require("@babel/plugin-proposal-export-namespace-from"),
+                                require("@babel/plugin-proposal-numeric-separator"),
+                                require("@babel/plugin-proposal-throw-expressions"),
+
+                                // Stage 3
+                                require("@babel/plugin-syntax-dynamic-import"),
+                                require("@babel/plugin-syntax-import-meta"),
+                                [require("@babel/plugin-proposal-class-properties"), { "loose": true }],
+                                require("@babel/plugin-proposal-json-strings")
+                           ],
+                           ignore: ["node_modules"]
+                      }
+                },
             },
             {
               // Exclude \`js\` files to keep "css" loader working as it injects
